@@ -1,0 +1,50 @@
+name: Release Bot
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  build:
+    name: Release
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - id: lastVersion
+        name: Get Last Tag
+        uses: jakubenglicky/github-action-get-latest-release@master
+        with:
+          owner: jakubenglicky
+          repo: github-actions-workflows
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        uses: jakubenglicky/create-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          pr_number: ${{github.event.pull_request.number}}
+          author: ${{github.event.pull_request.user.login}}
+          tag_name: ${{ steps.lastVersion.outputs.release }}
+          release_name: ${{github.event.pull_request.title}}
+          body: ${{github.event.pull_request.body}}
+          draft: false
+          prerelease: false
+      - name: Remove merge label
+        uses: actions-ecosystem/action-remove-labels@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          labels: "ready for merge"
+      - name: Done Label
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          labels: "Done"
+      - name: Add comment with release link to merged PR
+        uses: mshick/add-pr-comment@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          message: |
+            Vydáno: https://github.com/jakubenglicky/github-actions-workflows/releases/tag/${{ steps.lastVersion.outputs.release }}
